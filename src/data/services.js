@@ -5,7 +5,7 @@ export const services = [
     category: 'Appliances',
     description: 'Expert AC repair, deep cleaning, gas refilling, and installation service by certified technicians.',
     longDescription: 'Our professional AC technicians provide comprehensive repair and maintenance services for all brands and models. From gas top-up to full deep cleaning, PCB repair to compressor replacement — we handle it all with precision and care.',
-    image: 'https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1581094288338-2314dddb7ecc?w=600&q=80',
     price: 499,
     rating: 4.8,
     reviewCount: 2340,
@@ -159,7 +159,7 @@ export const services = [
     category: 'Pest Control',
     description: 'Safe and effective pest control for cockroaches, termites, bed bugs, and mosquitoes.',
     longDescription: 'Protect your home with our government-approved, eco-friendly pest control treatments. We use odourless chemicals safe for children and pets, covering cockroaches, termites, bed bugs, ants, mosquitoes, and rodents.',
-    image: 'https://images.unsplash.com/photo-1584715787616-60bc9c7e4d63?w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&q=80',
     price: 699,
     rating: 4.7,
     reviewCount: 1560,
@@ -174,6 +174,28 @@ export const services = [
     ],
     slots: ['08:00 AM', '10:00 AM', '12:00 PM', '02:00 PM', '04:00 PM'],
     popular: true
+  },
+  {
+    id: 9,
+    name: 'Carpentry Services',
+    category: 'Carpentry',
+    description: 'Expert carpenters for furniture repair, wooden fittings, cabinet assembly, and door/window fixing.',
+    longDescription: 'Get premium carpentry solutions for your home. From repairing squeaky doors and loose cabinets to assembling new modular furniture, drilling wall shelves, or custom wooden repairs — our skilled carpenters deliver flawless craftsmanship.',
+    image: 'https://images.unsplash.com/photo-1533090161767-e6ffed986c88?w=600&q=80',
+    price: 349,
+    rating: 4.8,
+    reviewCount: 1940,
+    duration: '1-3 hours',
+    features: [
+      'Furniture assembly & repair',
+      'Door/window hinge & lock fixing',
+      'Drilling & hanging (shelves, frames)',
+      'Cabinet & drawer repair',
+      'Wooden polishing & finishing',
+      'Post-service cleanup'
+    ],
+    slots: ['09:00 AM', '11:00 AM', '01:00 PM', '03:00 PM', '05:00 PM'],
+    popular: true
   }
 ]
 
@@ -184,6 +206,6 @@ export const categories = [
   { id: 4, name: 'Beauty', icon: '💅', count: 15 },
   { id: 5, name: 'Painting', icon: '🎨', count: 5 },
   { id: 6, name: 'Appliances', icon: '🔌', count: 10 },
-  { id: 7, name: 'Pest Control', icon: '🛡️', count: 4 },
+  { id: 7, name: 'Pest Control', icon: '🪲', count: 4 },
   { id: 8, name: 'Carpentry', icon: '🪚', count: 6 }
 ]

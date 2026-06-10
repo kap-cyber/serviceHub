@@ -87,7 +87,7 @@ export default function HomePage() {
               <Link to={`/services?category=${cat.name}`} key={cat.id} className="category-card">
                 <span className="cat-icon">{cat.icon}</span>
                 <span className="cat-name">{cat.name}</span>
-                <span className="cat-count">{cat.count} services</span>
+                <span className="cat-count">{cat.count} {cat.count === 1 ? 'Service' : 'Services'}</span>
               </Link>
             ))}
           </div>

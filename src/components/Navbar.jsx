@@ -38,13 +38,24 @@ export default function Navbar() {
         </Link>
 
         <nav className={`nav-links ${menuOpen ? 'nav-open' : ''}`}>
-          <Link to="/" className={isActive('/')}>Home</Link>
-          <Link to="/services" className={isActive('/services')}>Services</Link>
-          <Link to="/blog" className={isActive('/blog')}>Blog</Link>
-          {user && (
+          {user && user.role === 'technician' ? (
             <>
-              <Link to="/bookings" className={isActive('/bookings')}>My Bookings</Link>
-              <Link to="/profile" className={isActive('/profile')}>Profile</Link>
+              <Link to="/tech/dashboard" className={isActive('/tech/dashboard')}>Dashboard</Link>
+              <Link to="/tech/requests" className={isActive('/tech/requests')}>Job Requests</Link>
+              <Link to="/tech/jobs" className={isActive('/tech/jobs')}>Assigned Jobs</Link>
+              <Link to="/tech/profile" className={isActive('/tech/profile')}>Technician Profile</Link>
+            </>
+          ) : (
+            <>
+              <Link to="/" className={isActive('/')}>Home</Link>
+              <Link to="/services" className={isActive('/services')}>Services</Link>
+              <Link to="/blog" className={isActive('/blog')}>Blog</Link>
+              {user && (
+                <>
+                  <Link to="/bookings" className={isActive('/bookings')}>My Bookings</Link>
+                  <Link to="/profile" className={isActive('/profile')}>Profile</Link>
+                </>
+              )}
             </>
           )}
         </nav>
@@ -77,19 +88,31 @@ export default function Navbar() {
 
       {menuOpen && (
         <div className="mobile-menu">
-          <Link to="/" className="mobile-link">🏠 Home</Link>
-          <Link to="/services" className="mobile-link">🛠 Services</Link>
-          <Link to="/blog" className="mobile-link">📝 Blog</Link>
-          {user ? (
+          {user && user.role === 'technician' ? (
             <>
-              <Link to="/bookings" className="mobile-link">📋 My Bookings</Link>
-              <Link to="/profile" className="mobile-link">👤 Profile</Link>
+              <Link to="/tech/dashboard" className="mobile-link">📊 Dashboard</Link>
+              <Link to="/tech/requests" className="mobile-link">📨 Job Requests</Link>
+              <Link to="/tech/jobs" className="mobile-link">💼 Assigned Jobs</Link>
+              <Link to="/tech/profile" className="mobile-link">👤 Technician Profile</Link>
               <button onClick={handleLogout} className="mobile-link mobile-logout">🚪 Logout</button>
             </>
           ) : (
             <>
-              <Link to="/login" className="mobile-link">🔑 Login</Link>
-              <Link to="/signup" className="mobile-link mobile-signup">✨ Sign Up Free</Link>
+              <Link to="/" className="mobile-link">🏠 Home</Link>
+              <Link to="/services" className="mobile-link">🛠 Services</Link>
+              <Link to="/blog" className="mobile-link">📝 Blog</Link>
+              {user ? (
+                <>
+                  <Link to="/bookings" className="mobile-link">📋 My Bookings</Link>
+                  <Link to="/profile" className="mobile-link">👤 Profile</Link>
+                  <button onClick={handleLogout} className="mobile-link mobile-logout">🚪 Logout</button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login" className="mobile-link">🔑 Login</Link>
+                  <Link to="/signup" className="mobile-link mobile-signup">✨ Sign Up Free</Link>
+                </>
+              )}
             </>
           )}
         </div>

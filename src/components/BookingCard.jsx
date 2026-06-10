@@ -13,6 +13,8 @@ export default function BookingCard({ booking, onUpdate }) {
   const statusClass = {
     'Pending': 'status-pending',
     'Confirmed': 'status-confirmed',
+    'Accepted': 'status-accepted',
+    'In Progress': 'status-inprogress',
     'Completed': 'status-completed',
     'Cancelled': 'status-cancelled'
   }[booking.status] || 'status-pending'
@@ -48,9 +50,15 @@ export default function BookingCard({ booking, onUpdate }) {
             <span className="detail-icon">💰</span>
             <span>₹{booking.price}</span>
           </div>
+          {booking.technicianName && (
+            <div className="booking-detail">
+              <span className="detail-icon">🛠️</span>
+              <span>Tech: {booking.technicianName}</span>
+            </div>
+          )}
         </div>
         <div className="booking-id">Booking ID: #{booking.id}</div>
-        {booking.status !== 'Cancelled' && booking.status !== 'Completed' && (
+        {booking.status !== 'Cancelled' && booking.status !== 'Completed' && booking.status !== 'In Progress' && (
           <div className="booking-actions">
             <button onClick={handleCancel} className="cancel-btn">Cancel Booking</button>
           </div>

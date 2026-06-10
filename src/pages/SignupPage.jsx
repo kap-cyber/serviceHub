@@ -12,6 +12,7 @@ export default function SignupPage() {
   }
 
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' })
+  const [role, setRole] = useState('customer')
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
 
@@ -39,10 +40,10 @@ export default function SignupPage() {
 
     setLoading(true)
     setTimeout(() => {
-      const result = signup(form.name.trim(), form.email.trim(), form.password)
+      const result = signup(form.name.trim(), form.email.trim(), form.password, role)
       setLoading(false)
       if (result.success) {
-        navigate('/')
+        navigate(result.user.role === 'technician' ? '/tech/dashboard' : '/')
       } else {
         setErrors({ email: result.message })
       }
@@ -71,6 +72,23 @@ export default function SignupPage() {
             <Link to="/" className="auth-back">← Back to Home</Link>
             <h1 className="auth-title">Create Account</h1>
             <p className="auth-subtitle">Join 1 lakh+ happy customers on ServiceHub</p>
+          </div>
+
+          <div className="role-selector">
+            <button
+              type="button"
+              className={`role-tab-btn ${role === 'customer' ? 'active' : ''}`}
+              onClick={() => { setRole('customer'); setErrors({}); }}
+            >
+              👤 Customer
+            </button>
+            <button
+              type="button"
+              className={`role-tab-btn ${role === 'technician' ? 'active' : ''}`}
+              onClick={() => { setRole('technician'); setErrors({}); }}
+            >
+              🛠️ Technician
+            </button>
           </div>
 
           <form onSubmit={handleSubmit} className="auth-form">

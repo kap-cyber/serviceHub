@@ -180,3 +180,37 @@
   .auth-illustration { display: none; }
   .auth-form-section { min-height: calc(100vh - 70px); }
 }
+
+.role-selector {
+  display: flex;
+  background: var(--cream);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  margin-top: 10px;
+  margin-bottom: 5px;
+}
+
+.role-tab-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 10px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-radius: calc(var(--radius-md) - 2px);
+  transition: var(--transition);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.role-tab-btn.active {
+  background: var(--warm-white);
+  color: var(--deep-brown);
+  box-shadow: var(--shadow-sm);
+}

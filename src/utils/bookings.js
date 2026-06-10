@@ -32,3 +32,36 @@ export function cancelBooking(bookingId) {
   )
   localStorage.setItem(BOOKINGS_KEY, JSON.stringify(updated))
 }
+
+export function getTechnicianBookings(techId) {
+  return getBookings().filter(b => b.technicianId === techId)
+}
+
+export function updateBookingStatus(bookingId, status, techId = null, techName = null) {
+  const bookings = getBookings()
+  const updated = bookings.map(b => {
+    if (b.id === bookingId) {
+      const updatedB = { ...b, status }
+      if (techId) updatedB.technicianId = techId
+      if (techName) updatedB.technicianName = techName
+      return updatedB
+    }
+    return b
+  })
+  localStorage.setItem(BOOKINGS_KEY, JSON.stringify(updated))
+}
+
+export function rejectBookingForTechnician(bookingId, techId) {
+  const bookings = getBookings()
+  const updated = bookings.map(b => {
+    if (b.id === bookingId) {
+      const rejectedBy = b.rejectedBy || []
+      if (!rejectedBy.includes(techId)) {
+        rejectedBy.push(techId)
+      }
+      return { ...b, rejectedBy }
+    }
+    return b
+  })
+  localStorage.setItem(BOOKINGS_KEY, JSON.stringify(updated))
+}

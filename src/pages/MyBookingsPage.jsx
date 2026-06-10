@@ -5,7 +5,7 @@ import { getCurrentUser } from '../utils/auth'
 import BookingCard from '../components/BookingCard'
 import './MyBookingsPage.css'
 
-const STATUS_TABS = ['All', 'Pending', 'Confirmed', 'Completed', 'Cancelled']
+const STATUS_TABS = ['All', 'Pending', 'Accepted', 'In Progress', 'Completed', 'Cancelled']
 
 export default function MyBookingsPage() {
   const user = getCurrentUser()
@@ -18,7 +18,10 @@ export default function MyBookingsPage() {
 
   const filtered = activeTab === 'All'
     ? bookings
-    : bookings.filter(b => b.status === activeTab)
+    : bookings.filter(b => {
+        if (activeTab === 'Accepted') return b.status === 'Accepted' || b.status === 'Confirmed'
+        return b.status === activeTab
+      })
 
   const sortedFiltered = [...filtered].sort((a, b) => b.id - a.id)
 
@@ -48,10 +51,10 @@ export default function MyBookingsPage() {
             </div>
           </div>
           <div className="stat-card">
-            <span className="stat-icon">✅</span>
+            <span className="stat-icon">🤝</span>
             <div>
-              <div className="stat-num">{bookings.filter(b => b.status === 'Confirmed').length}</div>
-              <div className="stat-label">Confirmed</div>
+              <div className="stat-num">{bookings.filter(b => b.status === 'Accepted' || b.status === 'Confirmed').length}</div>
+              <div className="stat-label">Accepted</div>
             </div>
           </div>
           <div className="stat-card">
@@ -73,7 +76,10 @@ export default function MyBookingsPage() {
               {tab}
               {tab !== 'All' && (
                 <span className="tab-count">
-                  {bookings.filter(b => b.status === tab).length}
+                  {bookings.filter(b => {
+                    if (tab === 'Accepted') return b.status === 'Accepted' || b.status === 'Confirmed'
+                    return b.status === tab
+                  }).length}
                 </span>
               )}
             </button>

@@ -1,13 +1,54 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { getCurrentUser, logout } from '../utils/auth'
+import { getCurrentUser, logout, updateProfile } from '../utils/auth'
 import { getUserBookings } from '../utils/bookings'
 import './ProfilePage.css'
 
 export default function ProfilePage() {
   const navigate = useNavigate()
-  const user = getCurrentUser()
+  const [user, setUser] = useState(getCurrentUser())
   const bookings = getUserBookings(user?.id)
+
+  const [isEditing, setIsEditing] = useState(false)
+  const [form, setForm] = useState({
+    phone: user?.phone || '',
+    address: user?.address || '',
+    city: user?.city || '',
+    state: user?.state || '',
+    pincode: user?.pincode || ''
+  })
+  const [error, setError] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
+
+  function handleChange(e) {
+    const { name, value } = e.target
+    setForm(prev => ({ ...prev, [name]: value }))
+    setError('')
+    setSuccessMsg('')
+  }
+
+  function handleSaveProfile(e) {
+    e.preventDefault()
+    
+    if (form.phone && !/^\d{10}$/.test(form.phone)) {
+      setError('Please enter a valid 10-digit phone number.')
+      return
+    }
+    if (form.pincode && !/^\d{6}$/.test(form.pincode)) {
+      setError('Please enter a valid 6-digit pincode.')
+      return
+    }
+
+    const result = updateProfile(form)
+    if (result.success) {
+      setUser(result.user)
+      setSuccessMsg('Profile updated successfully!')
+      setIsEditing(false)
+      setTimeout(() => setSuccessMsg(''), 3000)
+    } else {
+      setError(result.message)
+    }
+  }
 
   function handleLogout() {
     logout()
@@ -94,6 +135,112 @@ export default function ProfilePage() {
               <span className="info-val">{joinDate}</span>
             </div>
           </div>
+        </div>
+
+        {/* Personal Details */}
+        <div className="profile-section">
+          <h2 className="profile-section-title">Personal Details</h2>
+          {successMsg && <div style={{ background: '#E8F5E9', border: '1px solid #A5D6A7', color: '#2E7D32', padding: '12px 16px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', marginBottom: '16px' }}>✓ {successMsg}</div>}
+          
+          {!isEditing ? (
+            <div className="profile-info-card">
+              <div className="info-row">
+                <span className="info-label">Phone Number</span>
+                <span className="info-val">{user?.phone || 'Not Provided'}</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Address</span>
+                <span className="info-val">{user?.address || 'Not Provided'}</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">City</span>
+                <span className="info-val">{user?.city || 'Not Provided'}</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">State</span>
+                <span className="info-val">{user?.state || 'Not Provided'}</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Pincode</span>
+                <span className="info-val">{user?.pincode || 'Not Provided'}</span>
+              </div>
+              <div style={{ padding: '16px 24px', display: 'flex', justifyContent: 'flex-end' }}>
+                <button onClick={() => { setIsEditing(true); setError(''); }} className="btn-outline">
+                  ✏️ Edit Details
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="profile-info-card" style={{ padding: '24px' }}>
+              <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '0px' }}>
+                {error && <div className="auth-error" style={{ marginBottom: '16px' }}>⚠️ {error}</div>}
+                
+                <div className="form-group">
+                  <label>Phone Number</label>
+                  <input
+                    type="text"
+                    name="phone"
+                    value={form.phone}
+                    onChange={handleChange}
+                    placeholder="Enter 10-digit phone number"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Address</label>
+                  <input
+                    type="text"
+                    name="address"
+                    value={form.address}
+                    onChange={handleChange}
+                    placeholder="Enter your street address"
+                  />
+                </div>
+
+                <div className="profile-form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+                  <div className="form-group">
+                    <label>City</label>
+                    <input
+                      type="text"
+                      name="city"
+                      value={form.city}
+                      onChange={handleChange}
+                      placeholder="City"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>State</label>
+                    <input
+                      type="text"
+                      name="state"
+                      value={form.state}
+                      onChange={handleChange}
+                      placeholder="State"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Pincode</label>
+                    <input
+                      type="text"
+                      name="pincode"
+                      value={form.pincode}
+                      onChange={handleChange}
+                      placeholder="Pincode"
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '16px' }}>
+                  <button type="button" onClick={() => { setIsEditing(false); setError(''); }} className="btn-ghost" style={{ borderRadius: 'var(--radius-full)' }}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn-primary">
+                    Save Changes
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
         </div>
 
         {/* Quick Links */}

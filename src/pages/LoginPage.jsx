@@ -14,6 +14,7 @@ export default function LoginPage() {
   }
 
   const [form, setForm] = useState({ email: '', password: '' })
+  const [role, setRole] = useState('customer')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -31,10 +32,10 @@ export default function LoginPage() {
     }
     setLoading(true)
     setTimeout(() => {
-      const result = login(form.email, form.password)
+      const result = login(form.email, form.password, role)
       setLoading(false)
       if (result.success) {
-        navigate(from, { replace: true })
+        navigate(result.user.role === 'technician' ? '/tech/dashboard' : from, { replace: true })
       } else {
         setError(result.message)
       }
@@ -63,6 +64,23 @@ export default function LoginPage() {
             <Link to="/" className="auth-back">← Back to Home</Link>
             <h1 className="auth-title">Welcome back</h1>
             <p className="auth-subtitle">Sign in to your ServiceHub account</p>
+          </div>
+
+          <div className="role-selector">
+            <button
+              type="button"
+              className={`role-tab-btn ${role === 'customer' ? 'active' : ''}`}
+              onClick={() => { setRole('customer'); setError(''); }}
+            >
+              👤 Customer
+            </button>
+            <button
+              type="button"
+              className={`role-tab-btn ${role === 'technician' ? 'active' : ''}`}
+              onClick={() => { setRole('technician'); setError(''); }}
+            >
+              🛠️ Technician
+            </button>
           </div>
 
           {error && (
