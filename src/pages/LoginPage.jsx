@@ -24,22 +24,32 @@ export default function LoginPage() {
     setError('')
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     if (!form.email || !form.password) {
       setError('Please fill in all fields.')
       return
     }
     setLoading(true)
-    setTimeout(() => {
-      const result = login(form.email, form.password, role)
-      setLoading(false)
+    setError('')
+    try {
+      const result = await login(form.email, form.password, role)
       if (result.success) {
-        navigate(result.user.role === 'technician' ? '/tech/dashboard' : from, { replace: true })
+        if (result.user.role === 'admin') {
+          navigate('/admin/dashboard', { replace: true })
+        } else if (result.user.role === 'technician') {
+          navigate('/tech/dashboard', { replace: true })
+        } else {
+          navigate(from, { replace: true })
+        }
       } else {
         setError(result.message)
       }
-    }, 600)
+    } catch (err) {
+      setError(err.message || 'An error occurred during login.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -80,6 +90,13 @@ export default function LoginPage() {
               onClick={() => { setRole('technician'); setError(''); }}
             >
               🛠️ Technician
+            </button>
+            <button
+              type="button"
+              className={`role-tab-btn ${role === 'admin' ? 'active' : ''}`}
+              onClick={() => { setRole('admin'); setError(''); }}
+            >
+              🔑 Admin
             </button>
           </div>
 

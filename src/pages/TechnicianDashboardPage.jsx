@@ -1,25 +1,51 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { getCurrentUser, updateProfile } from '../utils/auth'
-import { getBookings } from '../utils/bookings'
+import { db } from '../firebase/config'
+import { collection, onSnapshot } from 'firebase/firestore'
 import { services } from '../data/services'
 import './TechnicianDashboardPage.css'
 
 export default function TechnicianDashboardPage() {
   const [tech, setTech] = useState(() => getCurrentUser())
-  const [bookings, setBookings] = useState(() => getBookings())
+  const [bookings, setBookings] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  // Refresh statistics and data
+  // Listen to profile updates (e.g. from elsewhere or self)
   useEffect(() => {
-    setTech(getCurrentUser())
-    setBookings(getBookings())
+    function handleAuthChange() {
+      setTech(getCurrentUser())
+    }
+    window.addEventListener('auth-state-change', handleAuthChange)
+    return () => window.removeEventListener('auth-state-change', handleAuthChange)
   }, [])
 
-  function handleStatusChange(e) {
+  // Listen to bookings collection in real-time
+  useEffect(() => {
+    const q = collection(db, 'bookings')
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list = []
+      snapshot.forEach(docSnap => {
+        list.push({ id: docSnap.id, ...docSnap.data() })
+      })
+      setBookings(list)
+      setLoading(false)
+    }, (error) => {
+      console.error("Dashboard bookings fetch error:", error)
+      setLoading(false)
+    })
+    return () => unsubscribe()
+  }, [])
+
+  async function handleStatusChange(e) {
     const newStatus = e.target.value
-    const result = updateProfile({ availability: newStatus })
-    if (result.success) {
-      setTech(result.user)
+    try {
+      const result = await updateProfile({ availability: newStatus })
+      if (result.success) {
+        setTech(result.user)
+      }
+    } catch (error) {
+      console.error("Failed to update status:", error)
     }
   }
 
@@ -31,8 +57,9 @@ export default function TechnicianDashboardPage() {
 
   // Filtering counts
   const techServices = tech?.services || []
+  const techId = tech?.uid || tech?.id
   
-  const techBookings = bookings.filter(b => b.technicianId === tech?.id)
+  const techBookings = bookings.filter(b => b.technicianId === techId)
   
   const totalJobs = techBookings.length
   
@@ -43,14 +70,74 @@ export default function TechnicianDashboardPage() {
   const pendingRequests = bookings.filter(b => 
     b.status === 'Pending' && 
     techServices.includes(getServiceCategory(b.serviceId)) &&
-    !(b.rejectedBy || []).includes(tech?.id)
+    !(b.rejectedBy || []).includes(techId)
   )
   const pendingJobsCount = pendingRequests.length
 
   const recentActiveJobs = techBookings
     .filter(b => b.status === 'Accepted' || b.status === 'In Progress')
-    .sort((a, b) => b.id - a.id)
+    .sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+      return timeB - timeA
+    })
     .slice(0, 3)
+
+  if (loading) {
+    return (
+      <div className="loader-wrapper" style={{ minHeight: '60vh' }}>
+        <div className="loader"></div>
+      </div>
+    )
+  }
+
+  const isApproved = tech?.approvalStatus === 'Approved'
+  const isPending = tech?.approvalStatus === 'Pending' || !tech?.approvalStatus
+  const isRejected = tech?.approvalStatus === 'Rejected'
+  const isDisabled = tech?.status === 'Disabled'
+
+  if (!isApproved || isDisabled) {
+    return (
+      <div className="tech-dashboard-page">
+        <div className="page-header">
+          <div className="container">
+            <h1 className="section-title">Technician Dashboard</h1>
+            <p className="section-subtitle">Welcome back, {tech?.name || 'Technician'}!</p>
+          </div>
+        </div>
+
+        <div className="container tech-dashboard-body">
+          {isDisabled ? (
+            <div className="setup-notice" style={{ background: '#FFEBEE', border: '1px solid #FFCDD2', display: 'flex', gap: '16px', borderRadius: 'var(--radius-md)', padding: '24px' }}>
+              <span className="notice-icon">🚫</span>
+              <div>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: '#C62828', marginBottom: '4px' }}>Account Disabled</h3>
+                <p style={{ fontSize: '0.9rem', color: '#C62828' }}>Your technician profile has been disabled by the administrator. You will not receive new service requests or be able to manage jobs. Please contact support if you believe this is an error.</p>
+              </div>
+            </div>
+          ) : isPending ? (
+            <div className="setup-notice" style={{ background: '#FFF8E1', border: '1px solid #FFE082', display: 'flex', gap: '16px', borderRadius: 'var(--radius-md)', padding: '24px' }}>
+              <span className="notice-icon">🔒</span>
+              <div>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: '#F57F17', marginBottom: '4px' }}>Account Pending Approval</h3>
+                <p style={{ fontSize: '0.9rem', color: '#F57F17', marginBottom: '12px' }}>Your technician profile is currently pending administrator review. You will be able to accept job requests and configure your availability as soon as your account is approved.</p>
+                <Link to="/tech/profile" className="btn-primary" style={{ marginTop: 8 }}>View / Edit Profile Details</Link>
+              </div>
+            </div>
+          ) : (
+            <div className="setup-notice" style={{ background: '#FFEBEE', border: '1px solid #FFCDD2', display: 'flex', gap: '16px', borderRadius: 'var(--radius-md)', padding: '24px' }}>
+              <span className="notice-icon">❌</span>
+              <div>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: '#C62828', marginBottom: '4px' }}>Approval Request Rejected</h3>
+                <p style={{ fontSize: '0.9rem', color: '#C62828', marginBottom: '12px' }}>Your technician profile approval request has been rejected. Please review your profile details or contact support for further information.</p>
+                <Link to="/tech/profile" className="btn-primary" style={{ marginTop: 8 }}>Review Profile Details</Link>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="tech-dashboard-page">

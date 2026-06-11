@@ -1,14 +1,37 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { services } from '../data/services'
 import { getCurrentUser } from '../utils/auth'
+import { fetchServiceById } from '../firebase/db'
 import './ServiceDetailPage.css'
 
 export default function ServiceDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const user = getCurrentUser()
-  const service = services.find(s => s.id === parseInt(id))
+  const [service, setService] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let active = true
+    fetchServiceById(id).then(data => {
+      if (active) {
+        setService(data)
+        setLoading(false)
+      }
+    }).catch(err => {
+      console.error(err)
+      if (active) setLoading(false)
+    })
+    return () => { active = false }
+  }, [id])
+
+  if (loading) {
+    return (
+      <div className="loader-wrapper" style={{ minHeight: '60vh' }}>
+        <div className="loader"></div>
+      </div>
+    )
+  }
 
   if (!service) {
     return (

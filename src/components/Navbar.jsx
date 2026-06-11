@@ -16,6 +16,14 @@ export default function Navbar() {
   }, [location])
 
   useEffect(() => {
+    function handleAuthChange() {
+      setUser(getCurrentUser())
+    }
+    window.addEventListener('auth-state-change', handleAuthChange)
+    return () => window.removeEventListener('auth-state-change', handleAuthChange)
+  }, [])
+
+  useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20)
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
@@ -38,7 +46,17 @@ export default function Navbar() {
         </Link>
 
         <nav className={`nav-links ${menuOpen ? 'nav-open' : ''}`}>
-          {user && user.role === 'technician' ? (
+          {user && user.role === 'admin' ? (
+            <>
+              <Link to="/admin/dashboard" className={isActive('/admin/dashboard')}>Dashboard</Link>
+              <Link to="/admin/services" className={isActive('/admin/services')}>Services</Link>
+              <Link to="/admin/categories" className={isActive('/admin/categories')}>Categories</Link>
+              <Link to="/admin/bookings" className={isActive('/admin/bookings')}>Bookings</Link>
+              <Link to="/admin/customers" className={isActive('/admin/customers')}>Customers</Link>
+              <Link to="/admin/technicians" className={isActive('/admin/technicians')}>Technicians</Link>
+              <Link to="/admin/settings" className={isActive('/admin/settings')}>Settings</Link>
+            </>
+          ) : user && user.role === 'technician' ? (
             <>
               <Link to="/tech/dashboard" className={isActive('/tech/dashboard')}>Dashboard</Link>
               <Link to="/tech/requests" className={isActive('/tech/requests')}>Job Requests</Link>
@@ -88,7 +106,18 @@ export default function Navbar() {
 
       {menuOpen && (
         <div className="mobile-menu">
-          {user && user.role === 'technician' ? (
+          {user && user.role === 'admin' ? (
+            <>
+              <Link to="/admin/dashboard" className="mobile-link">📊 Dashboard</Link>
+              <Link to="/admin/services" className="mobile-link">🛠 Services Management</Link>
+              <Link to="/admin/categories" className="mobile-link">🗂 Categories</Link>
+              <Link to="/admin/bookings" className="mobile-link">📋 Bookings</Link>
+              <Link to="/admin/customers" className="mobile-link">👥 Customers</Link>
+              <Link to="/admin/technicians" className="mobile-link">🔧 Technicians</Link>
+              <Link to="/admin/settings" className="mobile-link">⚙ Settings</Link>
+              <button onClick={handleLogout} className="mobile-link mobile-logout">🚪 Logout</button>
+            </>
+          ) : user && user.role === 'technician' ? (
             <>
               <Link to="/tech/dashboard" className="mobile-link">📊 Dashboard</Link>
               <Link to="/tech/requests" className="mobile-link">📨 Job Requests</Link>

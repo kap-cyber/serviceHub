@@ -1,67 +1,106 @@
+import { db } from '../firebase/config'
+import { 
+  collection, 
+  getDocs, 
+  addDoc, 
+  updateDoc, 
+  doc, 
+  query, 
+  where, 
+  arrayUnion 
+} from 'firebase/firestore'
+
 const BOOKINGS_KEY = 'sh_bookings'
 
-export function getBookings() {
+export async function getBookings() {
   try {
-    return JSON.parse(localStorage.getItem(BOOKINGS_KEY)) || []
-  } catch {
+    const snap = await getDocs(collection(db, 'bookings'))
+    const list = []
+    snap.forEach(docSnap => {
+      list.push({ id: docSnap.id, ...docSnap.data() })
+    })
+    return list
+  } catch (error) {
+    console.error("Fetch bookings error details:", error)
     return []
   }
 }
 
-export function getUserBookings(userId) {
-  return getBookings().filter(b => b.userId === userId)
-}
-
-export function saveBooking(booking) {
-  const bookings = getBookings()
-  const newBooking = {
-    ...booking,
-    id: Date.now(),
-    status: 'Pending',
-    createdAt: new Date().toISOString()
+export async function getUserBookings(userId) {
+  try {
+    if (!userId) return []
+    const q = query(collection(db, 'bookings'), where('userId', '==', userId))
+    const snap = await getDocs(q)
+    const list = []
+    snap.forEach(docSnap => {
+      list.push({ id: docSnap.id, ...docSnap.data() })
+    })
+    return list
+  } catch (error) {
+    console.error("Fetch user bookings error details:", error)
+    return []
   }
-  bookings.push(newBooking)
-  localStorage.setItem(BOOKINGS_KEY, JSON.stringify(bookings))
-  return newBooking
 }
 
-export function cancelBooking(bookingId) {
-  const bookings = getBookings()
-  const updated = bookings.map(b =>
-    b.id === bookingId ? { ...b, status: 'Cancelled' } : b
-  )
-  localStorage.setItem(BOOKINGS_KEY, JSON.stringify(updated))
+export async function getTechnicianBookings(techId) {
+  try {
+    if (!techId) return []
+    const q = query(collection(db, 'bookings'), where('technicianId', '==', techId))
+    const snap = await getDocs(q)
+    const list = []
+    snap.forEach(docSnap => {
+      list.push({ id: docSnap.id, ...docSnap.data() })
+    })
+    return list
+  } catch (error) {
+    console.error("Fetch tech bookings error details:", error)
+    return []
+  }
 }
 
-export function getTechnicianBookings(techId) {
-  return getBookings().filter(b => b.technicianId === techId)
-}
-
-export function updateBookingStatus(bookingId, status, techId = null, techName = null) {
-  const bookings = getBookings()
-  const updated = bookings.map(b => {
-    if (b.id === bookingId) {
-      const updatedB = { ...b, status }
-      if (techId) updatedB.technicianId = techId
-      if (techName) updatedB.technicianName = techName
-      return updatedB
+export async function saveBooking(booking) {
+  try {
+    const newBooking = {
+      ...booking,
+      status: 'Pending',
+      createdAt: new Date().toISOString()
     }
-    return b
-  })
-  localStorage.setItem(BOOKINGS_KEY, JSON.stringify(updated))
+    const docRef = await addDoc(collection(db, 'bookings'), newBooking)
+    return { id: docRef.id, ...newBooking }
+  } catch (error) {
+    console.error("Save booking error details:", error)
+    throw error
+  }
 }
 
-export function rejectBookingForTechnician(bookingId, techId) {
-  const bookings = getBookings()
-  const updated = bookings.map(b => {
-    if (b.id === bookingId) {
-      const rejectedBy = b.rejectedBy || []
-      if (!rejectedBy.includes(techId)) {
-        rejectedBy.push(techId)
-      }
-      return { ...b, rejectedBy }
-    }
-    return b
-  })
-  localStorage.setItem(BOOKINGS_KEY, JSON.stringify(updated))
+export async function cancelBooking(bookingId) {
+  try {
+    const docRef = doc(db, 'bookings', bookingId)
+    await updateDoc(docRef, { status: 'Cancelled' })
+  } catch (error) {
+    console.error("Cancel booking error details:", error)
+  }
+}
+
+export async function updateBookingStatus(bookingId, status, techId = null, techName = null) {
+  try {
+    const docRef = doc(db, 'bookings', bookingId)
+    const updateData = { status }
+    if (techId) updateData.technicianId = techId
+    if (techName) updateData.technicianName = techName
+    await updateDoc(docRef, updateData)
+  } catch (error) {
+    console.error("Update booking status error details:", error)
+  }
+}
+
+export async function rejectBookingForTechnician(bookingId, techId) {
+  try {
+    const docRef = doc(db, 'bookings', bookingId)
+    await updateDoc(docRef, {
+      rejectedBy: arrayUnion(techId)
+    })
+  } catch (error) {
+    console.error("Reject booking error details:", error)
+  }
 }

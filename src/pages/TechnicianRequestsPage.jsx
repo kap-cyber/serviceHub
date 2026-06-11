@@ -1,23 +1,43 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { getCurrentUser } from '../utils/auth'
-import { getBookings, updateBookingStatus, rejectBookingForTechnician } from '../utils/bookings'
+import { updateBookingStatus, rejectBookingForTechnician } from '../utils/bookings'
+import { db } from '../firebase/config'
+import { collection, onSnapshot } from 'firebase/firestore'
 import { services } from '../data/services'
 import './TechnicianRequestsPage.css'
 
 export default function TechnicianRequestsPage() {
   const [tech, setTech] = useState(() => getCurrentUser())
-  const [bookings, setBookings] = useState(() => getBookings())
+  const [bookings, setBookings] = useState([])
+  const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
 
+  // Sync profile update
   useEffect(() => {
-    setTech(getCurrentUser())
-    setBookings(getBookings())
+    function handleAuthChange() {
+      setTech(getCurrentUser())
+    }
+    window.addEventListener('auth-state-change', handleAuthChange)
+    return () => window.removeEventListener('auth-state-change', handleAuthChange)
   }, [])
 
-  function refresh() {
-    setBookings(getBookings())
-  }
+  // Listen to bookings collection in real-time
+  useEffect(() => {
+    const q = collection(db, 'bookings')
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list = []
+      snapshot.forEach(docSnap => {
+        list.push({ id: docSnap.id, ...docSnap.data() })
+      })
+      setBookings(list)
+      setLoading(false)
+    }, (error) => {
+      console.error("Requests page bookings fetch error:", error)
+      setLoading(false)
+    })
+    return () => unsubscribe()
+  }, [])
 
   function getServiceCategory(serviceId) {
     const s = services.find(item => item.id === serviceId)
@@ -26,25 +46,44 @@ export default function TechnicianRequestsPage() {
 
   // Filter requests matching technician's chosen categories
   const techServices = tech?.services || []
+  const techId = tech?.uid || tech?.id
   
   const pendingRequests = bookings.filter(b => 
     b.status === 'Pending' && 
     techServices.includes(getServiceCategory(b.serviceId)) &&
-    !(b.rejectedBy || []).includes(tech?.id)
+    !(b.rejectedBy || []).includes(techId)
   )
 
-  function handleAccept(bookingId, serviceName) {
-    updateBookingStatus(bookingId, 'Accepted', tech.id, tech.name)
-    setMessage(`🎉 You accepted the job: ${serviceName}!`)
-    refresh()
-    setTimeout(() => setMessage(''), 3000)
+  async function handleAccept(bookingId, serviceName) {
+    try {
+      await updateBookingStatus(bookingId, 'Accepted', techId, tech?.name || 'Technician')
+      setMessage(`🎉 You accepted the job: ${serviceName}!`)
+      setTimeout(() => setMessage(''), 3000)
+    } catch (error) {
+      console.error(error)
+      setMessage('Failed to accept job.')
+      setTimeout(() => setMessage(''), 3000)
+    }
   }
 
-  function handleReject(bookingId) {
-    rejectBookingForTechnician(bookingId, tech.id)
-    setMessage('Job request declined.')
-    refresh()
-    setTimeout(() => setMessage(''), 3000)
+  async function handleReject(bookingId) {
+    try {
+      await rejectBookingForTechnician(bookingId, techId)
+      setMessage('Job request declined.')
+      setTimeout(() => setMessage(''), 3000)
+    } catch (error) {
+      console.error(error)
+      setMessage('Failed to decline job.')
+      setTimeout(() => setMessage(''), 3000)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="loader-wrapper" style={{ minHeight: '60vh' }}>
+        <div className="loader"></div>
+      </div>
+    )
   }
 
   return (

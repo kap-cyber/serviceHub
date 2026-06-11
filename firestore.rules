@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: Is the user authenticated
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Helper: Does the user ID match the auth token UID
+    function isOwner(userId) {
+      return isAuth() && request.auth.uid == userId;
+    }
+
+    // Helper: Is the user an administrator
+    function isAdmin() {
+      return isAuth() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // users collection
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if isOwner(userId) || isAdmin();
+    }
+
+    // bookings collection
+    match /bookings/{bookingId} {
+      // Allow customers to read/write their own bookings.
+      // Allow technicians to read pending requests or bookings assigned to them.
+      allow create: if isAuth();
+      allow read: if isAuth() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.technicianId == request.auth.uid ||
+        resource.data.status == 'Pending' ||
+        isAdmin()
+      );
+      allow update: if isAuth() && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.technicianId == request.auth.uid ||
+        (resource.data.status == 'Pending' && request.resource.data.status == 'Accepted') ||
+        isAdmin()
+      );
+      allow delete: if isAdmin(); // prevent deletion except by admin
+    }
+
+    // services collection
+    match /services/{serviceId} {
+      allow read: if true;
+      allow write: if true; // allow client-side seeding & admin updates
+    }
+
+    // blogs collection
+    match /blogs/{blogId} {
+      allow read: if true;
+      allow write: if true; // allow client-side seeding & admin updates
+    }
+
+    // categories collection
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if true; // allow client-side seeding & admin updates
+    }
+  }
+}

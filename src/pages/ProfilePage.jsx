@@ -1,13 +1,14 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { getCurrentUser, logout, updateProfile } from '../utils/auth'
-import { getUserBookings } from '../utils/bookings'
+import { db } from '../firebase/config'
+import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import './ProfilePage.css'
 
 export default function ProfilePage() {
   const navigate = useNavigate()
   const [user, setUser] = useState(getCurrentUser())
-  const bookings = getUserBookings(user?.id)
+  const [bookings, setBookings] = useState([])
 
   const [isEditing, setIsEditing] = useState(false)
   const [form, setForm] = useState({
@@ -20,6 +21,47 @@ export default function ProfilePage() {
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
 
+  // Sync user with auth changes
+  useEffect(() => {
+    function handleAuthChange() {
+      const u = getCurrentUser()
+      setUser(u)
+      if (u) {
+        setForm({
+          phone: u.phone || '',
+          address: u.address || '',
+          city: u.city || '',
+          state: u.state || '',
+          pincode: u.pincode || ''
+        })
+      }
+    }
+    window.addEventListener('auth-state-change', handleAuthChange)
+    return () => window.removeEventListener('auth-state-change', handleAuthChange)
+  }, [])
+
+  // Sync bookings with Firestore in real-time
+  useEffect(() => {
+    if (!user) return
+
+    const q = query(
+      collection(db, 'bookings'),
+      where('userId', '==', user.uid)
+    )
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list = []
+      snapshot.forEach(docSnap => {
+        list.push({ id: docSnap.id, ...docSnap.data() })
+      })
+      setBookings(list)
+    }, (err) => {
+      console.error("Profile bookings fetch error:", err)
+    })
+
+    return () => unsubscribe()
+  }, [user])
+
   function handleChange(e) {
     const { name, value } = e.target
     setForm(prev => ({ ...prev, [name]: value }))
@@ -27,7 +69,7 @@ export default function ProfilePage() {
     setSuccessMsg('')
   }
 
-  function handleSaveProfile(e) {
+  async function handleSaveProfile(e) {
     e.preventDefault()
     
     if (form.phone && !/^\d{10}$/.test(form.phone)) {
@@ -39,14 +81,19 @@ export default function ProfilePage() {
       return
     }
 
-    const result = updateProfile(form)
-    if (result.success) {
-      setUser(result.user)
-      setSuccessMsg('Profile updated successfully!')
-      setIsEditing(false)
-      setTimeout(() => setSuccessMsg(''), 3000)
-    } else {
-      setError(result.message)
+    try {
+      const result = await updateProfile(form)
+      if (result.success) {
+        setUser(result.user)
+        setSuccessMsg('Profile updated successfully!')
+        setIsEditing(false)
+        setTimeout(() => setSuccessMsg(''), 3000)
+      } else {
+        setError(result.message)
+      }
+    } catch (err) {
+      console.error(err)
+      setError('Failed to update profile.')
     }
   }
 

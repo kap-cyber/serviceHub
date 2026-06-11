@@ -1,16 +1,37 @@
-import React, { useState } from 'react'
-import { blogs } from '../data/blogs'
+import React, { useState, useEffect } from 'react'
+import { fetchBlogs } from '../firebase/db'
 import BlogCard from '../components/BlogCard'
 import './BlogPage.css'
 
 export default function BlogPage() {
   const [search, setSearch] = useState('')
+  const [dbBlogs, setDbBlogs] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const filtered = blogs.filter(b =>
+  useEffect(() => {
+    let active = true
+    fetchBlogs().then(data => {
+      if (active) {
+        setDbBlogs(data)
+        setLoading(false)
+      }
+    })
+    return () => { active = false }
+  }, [])
+
+  const filtered = dbBlogs.filter(b =>
     b.title.toLowerCase().includes(search.toLowerCase()) ||
     b.category.toLowerCase().includes(search.toLowerCase()) ||
     b.excerpt.toLowerCase().includes(search.toLowerCase())
   )
+
+  if (loading) {
+    return (
+      <div className="loader-wrapper">
+        <div className="loader"></div>
+      </div>
+    )
+  }
 
   return (
     <div className="blog-page">

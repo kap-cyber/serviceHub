@@ -33,21 +33,24 @@ export default function SignupPage() {
     return errs
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     const errs = validate()
     if (Object.keys(errs).length > 0) { setErrors(errs); return }
 
     setLoading(true)
-    setTimeout(() => {
-      const result = signup(form.name.trim(), form.email.trim(), form.password, role)
-      setLoading(false)
+    try {
+      const result = await signup(form.name.trim(), form.email.trim(), form.password, role)
       if (result.success) {
         navigate(result.user.role === 'technician' ? '/tech/dashboard' : '/')
       } else {
         setErrors({ email: result.message })
       }
-    }, 600)
+    } catch (err) {
+      setErrors({ email: err.message || 'An error occurred during sign up.' })
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

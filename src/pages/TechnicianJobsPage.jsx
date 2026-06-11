@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { getCurrentUser } from '../utils/auth'
-import { getBookings, updateBookingStatus } from '../utils/bookings'
+import { updateBookingStatus } from '../utils/bookings'
+import { db } from '../firebase/config'
+import { collection, onSnapshot } from 'firebase/firestore'
 import { services } from '../data/services'
 import './TechnicianJobsPage.css'
 
@@ -9,18 +11,36 @@ const JOBS_TABS = ['All', 'Active', 'Completed', 'Cancelled']
 
 export default function TechnicianJobsPage() {
   const [tech, setTech] = useState(() => getCurrentUser())
-  const [bookings, setBookings] = useState(() => getBookings())
+  const [bookings, setBookings] = useState([])
+  const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('Active')
   const [message, setMessage] = useState('')
 
+  // Sync profile update
   useEffect(() => {
-    setTech(getCurrentUser())
-    setBookings(getBookings())
+    function handleAuthChange() {
+      setTech(getCurrentUser())
+    }
+    window.addEventListener('auth-state-change', handleAuthChange)
+    return () => window.removeEventListener('auth-state-change', handleAuthChange)
   }, [])
 
-  function refresh() {
-    setBookings(getBookings())
-  }
+  // Listen to bookings collection in real-time
+  useEffect(() => {
+    const q = collection(db, 'bookings')
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list = []
+      snapshot.forEach(docSnap => {
+        list.push({ id: docSnap.id, ...docSnap.data() })
+      })
+      setBookings(list)
+      setLoading(false)
+    }, (error) => {
+      console.error("Jobs page bookings fetch error:", error)
+      setLoading(false)
+    })
+    return () => unsubscribe()
+  }, [])
 
   function getServiceCategory(serviceId) {
     const s = services.find(item => item.id === serviceId)
@@ -28,7 +48,8 @@ export default function TechnicianJobsPage() {
   }
 
   // Filter bookings for this technician
-  const techBookings = bookings.filter(b => b.technicianId === tech?.id)
+  const techId = tech?.uid || tech?.id
+  const techBookings = bookings.filter(b => b.technicianId === techId)
 
   const filteredJobs = techBookings.filter(job => {
     if (activeTab === 'All') return true
@@ -36,30 +57,57 @@ export default function TechnicianJobsPage() {
     return job.status === activeTab
   })
 
-  // Sort by id descending (most recent first)
-  const sortedJobs = [...filteredJobs].sort((a, b) => b.id - a.id)
+  // Sort by createdAt descending
+  const sortedJobs = [...filteredJobs].sort((a, b) => {
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+    return timeB - timeA
+  })
 
-  function handleStartJob(bookingId) {
-    updateBookingStatus(bookingId, 'In Progress')
-    setMessage('🚀 Job started! Status updated to "In Progress".')
-    refresh()
-    setTimeout(() => setMessage(''), 3000)
-  }
-
-  function handleCompleteJob(bookingId) {
-    updateBookingStatus(bookingId, 'Completed')
-    setMessage('🏁 Job completed! Great work.')
-    refresh()
-    setTimeout(() => setMessage(''), 3000)
-  }
-
-  function handleCancelJob(bookingId) {
-    if (window.confirm('Are you sure you want to cancel this assigned job?')) {
-      updateBookingStatus(bookingId, 'Cancelled')
-      setMessage('❌ Job has been cancelled.')
-      refresh()
+  async function handleStartJob(bookingId) {
+    try {
+      await updateBookingStatus(bookingId, 'In Progress')
+      setMessage('🚀 Job started! Status updated to "In Progress".')
+      setTimeout(() => setMessage(''), 3000)
+    } catch (error) {
+      console.error(error)
+      setMessage('Failed to start job.')
       setTimeout(() => setMessage(''), 3000)
     }
+  }
+
+  async function handleCompleteJob(bookingId) {
+    try {
+      await updateBookingStatus(bookingId, 'Completed')
+      setMessage('🏁 Job completed! Great work.')
+      setTimeout(() => setMessage(''), 3000)
+    } catch (error) {
+      console.error(error)
+      setMessage('Failed to complete job.')
+      setTimeout(() => setMessage(''), 3000)
+    }
+  }
+
+  async function handleCancelJob(bookingId) {
+    if (window.confirm('Are you sure you want to cancel this assigned job?')) {
+      try {
+        await updateBookingStatus(bookingId, 'Cancelled')
+        setMessage('❌ Job has been cancelled.')
+        setTimeout(() => setMessage(''), 3000)
+      } catch (error) {
+        console.error(error)
+        setMessage('Failed to cancel job.')
+        setTimeout(() => setMessage(''), 3000)
+      }
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="loader-wrapper" style={{ minHeight: '60vh' }}>
+        <div className="loader"></div>
+      </div>
+    )
   }
 
   return (

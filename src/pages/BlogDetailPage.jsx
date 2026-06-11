@@ -1,11 +1,34 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { blogs } from '../data/blogs'
+import { fetchBlogById } from '../firebase/db'
 import './BlogDetailPage.css'
 
 export default function BlogDetailPage() {
   const { id } = useParams()
-  const blog = blogs.find(b => b.id === parseInt(id))
+  const [blog, setBlog] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let active = true
+    fetchBlogById(id).then(data => {
+      if (active) {
+        setBlog(data)
+        setLoading(false)
+      }
+    }).catch(err => {
+      console.error(err)
+      if (active) setLoading(false)
+    })
+    return () => { active = false }
+  }, [id])
+
+  if (loading) {
+    return (
+      <div className="loader-wrapper" style={{ minHeight: '60vh' }}>
+        <div className="loader"></div>
+      </div>
+    )
+  }
 
   if (!blog) {
     return (

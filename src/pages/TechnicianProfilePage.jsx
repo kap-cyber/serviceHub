@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { getCurrentUser, updateProfile } from '../utils/auth'
 import { categories } from '../data/services'
 import './TechnicianProfilePage.css'
@@ -20,6 +20,28 @@ export default function TechnicianProfilePage() {
     availability: tech?.availability || 'Available'
   })
 
+  // Sync profile updates from elsewhere
+  useEffect(() => {
+    function handleAuthChange() {
+      const u = getCurrentUser()
+      setTech(u)
+      if (u) {
+        setForm({
+          phone: u.phone || '',
+          address: u.address || '',
+          city: u.city || '',
+          state: u.state || '',
+          pincode: u.pincode || '',
+          bio: u.bio || '',
+          services: u.services || [],
+          availability: u.availability || 'Available'
+        })
+      }
+    }
+    window.addEventListener('auth-state-change', handleAuthChange)
+    return () => window.removeEventListener('auth-state-change', handleAuthChange)
+  }, [])
+
   function handleChange(e) {
     const { name, value } = e.target
     setForm(prev => ({ ...prev, [name]: value }))
@@ -38,7 +60,7 @@ export default function TechnicianProfilePage() {
     setSuccessMsg('')
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
 
     if (form.phone && !/^\d{10}$/.test(form.phone)) {
@@ -50,14 +72,19 @@ export default function TechnicianProfilePage() {
       return
     }
 
-    const result = updateProfile(form)
-    if (result.success) {
-      setTech(result.user)
-      setSuccessMsg('Profile details updated successfully!')
-      setIsEditing(false)
-      setTimeout(() => setSuccessMsg(''), 3000)
-    } else {
-      setError(result.message)
+    try {
+      const result = await updateProfile(form)
+      if (result.success) {
+        setTech(result.user)
+        setSuccessMsg('Profile details updated successfully!')
+        setIsEditing(false)
+        setTimeout(() => setSuccessMsg(''), 3000)
+      } else {
+        setError(result.message)
+      }
+    } catch (err) {
+      console.error(err)
+      setError('Failed to update profile details.')
     }
   }
 

@@ -1,8 +1,9 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getUserBookings } from '../utils/bookings'
 import { getCurrentUser } from '../utils/auth'
 import BookingCard from '../components/BookingCard'
+import { db } from '../firebase/config'
+import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import './MyBookingsPage.css'
 
 const STATUS_TABS = ['All', 'Pending', 'Accepted', 'In Progress', 'Completed', 'Cancelled']
@@ -10,10 +11,34 @@ const STATUS_TABS = ['All', 'Pending', 'Accepted', 'In Progress', 'Completed', '
 export default function MyBookingsPage() {
   const user = getCurrentUser()
   const [activeTab, setActiveTab] = useState('All')
-  const [bookings, setBookings] = useState(() => getUserBookings(user?.id))
+  const [bookings, setBookings] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!user) return
+
+    const q = query(
+      collection(db, 'bookings'),
+      where('userId', '==', user.uid)
+    )
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list = []
+      snapshot.forEach(docSnap => {
+        list.push({ id: docSnap.id, ...docSnap.data() })
+      })
+      setBookings(list)
+      setLoading(false)
+    }, (error) => {
+      console.error("onSnapshot error:", error)
+      setLoading(false)
+    })
+
+    return () => unsubscribe()
+  }, [user])
 
   function refresh() {
-    setBookings(getUserBookings(user?.id))
+    // Real-time listener handles refresh automatically
   }
 
   const filtered = activeTab === 'All'
@@ -23,7 +48,19 @@ export default function MyBookingsPage() {
         return b.status === activeTab
       })
 
-  const sortedFiltered = [...filtered].sort((a, b) => b.id - a.id)
+  const sortedFiltered = [...filtered].sort((a, b) => {
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+    return timeB - timeA
+  })
+
+  if (loading) {
+    return (
+      <div className="loader-wrapper">
+        <div className="loader"></div>
+      </div>
+    )
+  }
 
   return (
     <div className="my-bookings-page">

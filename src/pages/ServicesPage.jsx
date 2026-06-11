@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { services, categories } from '../data/services'
+import { categories } from '../data/services'
 import ServiceCard from '../components/ServiceCard'
+import { fetchServices } from '../firebase/db'
 import './ServicesPage.css'
 
 export default function ServicesPage() {
@@ -9,8 +10,21 @@ export default function ServicesPage() {
   const [search, setSearch] = useState(searchParams.get('search') || '')
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || 'All')
   const [sortBy, setSortBy] = useState('popular')
+  const [dbServices, setDbServices] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const filtered = services
+  useEffect(() => {
+    let active = true
+    fetchServices().then(data => {
+      if (active) {
+        setDbServices(data)
+        setLoading(false)
+      }
+    })
+    return () => { active = false }
+  }, [])
+
+  const filtered = dbServices
     .filter(s => {
       const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) ||
         s.category.toLowerCase().includes(search.toLowerCase()) ||
@@ -24,6 +38,14 @@ export default function ServicesPage() {
       if (sortBy === 'rating') return b.rating - a.rating
       return b.popular - a.popular
     })
+
+  if (loading) {
+    return (
+      <div className="loader-wrapper">
+        <div className="loader"></div>
+      </div>
+    )
+  }
 
   return (
     <div className="services-page">

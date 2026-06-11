@@ -1,30 +1,12 @@
-const USERS_KEY = 'sh_users'
-const TECHNICIANS_KEY = 'sh_technicians'
+import { auth as firebaseAuth, db } from '../firebase/config'
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut 
+} from 'firebase/auth'
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'
+
 const SESSION_KEY = 'sh_session'
-
-export function getUsers() {
-  try {
-    return JSON.parse(localStorage.getItem(USERS_KEY)) || []
-  } catch {
-    return []
-  }
-}
-
-export function saveUsers(users) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users))
-}
-
-export function getTechnicians() {
-  try {
-    return JSON.parse(localStorage.getItem(TECHNICIANS_KEY)) || []
-  } catch {
-    return []
-  }
-}
-
-export function saveTechnicians(techs) {
-  localStorage.setItem(TECHNICIANS_KEY, JSON.stringify(techs))
-}
 
 export function getCurrentUser() {
   try {
@@ -42,22 +24,17 @@ export function setCurrentUser(user) {
   localStorage.setItem(SESSION_KEY, JSON.stringify(user))
 }
 
-export function logout() {
-  localStorage.removeItem(SESSION_KEY)
-}
+export async function signup(name, email, password, role = 'customer') {
+  try {
+    // 1. Create authentication user
+    const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, password)
+    const firebaseUser = userCredential.user
 
-export function signup(name, email, password, role = 'customer') {
-  if (role === 'technician') {
-    const techs = getTechnicians()
-    const exists = techs.find(t => t.email.toLowerCase() === email.toLowerCase())
-    if (exists) return { success: false, message: 'An account with this email already exists.' }
-
-    const newTech = {
-      id: Date.now(),
+    // 2. Create profile document in Firestore
+    const profileData = {
       name,
       email: email.toLowerCase(),
-      password,
-      role: 'technician',
+      role,
       phone: '',
       address: '',
       city: '',
@@ -65,91 +42,161 @@ export function signup(name, email, password, role = 'customer') {
       pincode: '',
       bio: '',
       services: [],
-      availability: 'Available',
+      availability: role === 'technician' ? 'Available' : '',
       createdAt: new Date().toISOString()
     }
-    techs.push(newTech)
-    saveTechnicians(techs)
-    const { password: _, ...safeTech } = newTech
-    setCurrentUser(safeTech)
-    return { success: true, user: safeTech }
-  } else {
-    const users = getUsers()
-    const exists = users.find(u => u.email.toLowerCase() === email.toLowerCase())
-    if (exists) return { success: false, message: 'An account with this email already exists.' }
+    await setDoc(doc(db, 'users', firebaseUser.uid), profileData)
 
-    const newUser = {
-      id: Date.now(),
-      name,
-      email: email.toLowerCase(),
-      password,
-      role: 'customer',
-      phone: '',
-      address: '',
-      city: '',
-      state: '',
-      pincode: '',
-      createdAt: new Date().toISOString()
+    const sessionUser = {
+      id: firebaseUser.uid,
+      uid: firebaseUser.uid,
+      ...profileData,
+      activeRole: role
     }
-    users.push(newUser)
-    saveUsers(users)
-    const { password: _, ...safeUser } = newUser
-    setCurrentUser(safeUser)
-    return { success: true, user: safeUser }
+    setCurrentUser(sessionUser)
+
+    return { success: true, user: sessionUser }
+  } catch (error) {
+    console.error("Signup error details:", error)
+    let message = 'An error occurred during registration.'
+    if (error.code === 'auth/email-already-in-use') {
+      message = 'An account with this email already exists.'
+    } else if (error.code === 'auth/weak-password') {
+      message = 'Password must be at least 6 characters.'
+    } else if (error.code === 'auth/invalid-email') {
+      message = 'Please enter a valid email address.'
+    }
+    return { success: false, message }
   }
 }
 
-export function login(email, password, role = 'customer') {
-  const accounts = role === 'technician' ? getTechnicians() : getUsers()
-  const user = accounts.find(
-    u => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-  )
-  if (!user) return { success: false, message: 'Invalid email or password.' }
-  const { password: _, ...safeUser } = user
-  const userWithRole = { ...safeUser, role }
-  setCurrentUser(userWithRole)
-  return { success: true, user: userWithRole }
-}
+export async function login(email, password, role = 'customer') {
+  try {
+    // 1. Sign in with Firebase Auth
+    const userCredential = await signInWithEmailAndPassword(firebaseAuth, email, password)
+    const firebaseUser = userCredential.user
 
-export function updateProfile(profileData) {
-  const currentUser = getCurrentUser()
-  if (!currentUser) return { success: false, message: 'No user is logged in.' }
+    // 2. Get user document from Firestore to verify their role
+    const userDocRef = doc(db, 'users', firebaseUser.uid)
+    const docSnap = await getDoc(userDocRef)
 
-  if (currentUser.role === 'technician') {
-    const techs = getTechnicians()
-    const techIndex = techs.findIndex(t => t.id === currentUser.id)
-    if (techIndex === -1) return { success: false, message: 'Technician not found.' }
-
-    const updatedTech = {
-      ...techs[techIndex],
-      ...profileData
+    if (!docSnap.exists()) {
+      await signOut(firebaseAuth)
+      return { success: false, message: 'User profile not found.' }
     }
 
-    techs[techIndex] = updatedTech
-    saveTechnicians(techs)
+    const profileData = docSnap.data()
+    const dbRole = profileData.role || ''
 
-    const { password: _, ...safeTech } = updatedTech
-    const techWithRole = { ...safeTech, role: 'technician' }
-    setCurrentUser(techWithRole)
+    // Determine if Customer profile exists
+    const hasCustomerProfile = dbRole === 'customer' || dbRole === 'both' ||
+                              (Array.isArray(dbRole) && dbRole.includes('customer')) ||
+                              (profileData.roles && profileData.roles.includes('customer'))
 
-    return { success: true, user: techWithRole }
-  } else {
-    const users = getUsers()
-    const userIndex = users.findIndex(u => u.id === currentUser.id)
-    if (userIndex === -1) return { success: false, message: 'User not found.' }
+    // Determine if Technician profile exists
+    const hasTechnicianProfile = dbRole === 'technician' || dbRole === 'both' ||
+                                (Array.isArray(dbRole) && dbRole.includes('technician')) ||
+                                (profileData.roles && profileData.roles.includes('technician'))
+
+    // Determine if Admin profile exists
+    const hasAdminProfile = dbRole === 'admin' || dbRole === 'both' ||
+                            (Array.isArray(dbRole) && dbRole.includes('admin')) ||
+                            (profileData.roles && profileData.roles.includes('admin'))
+
+    // Check Case 1: Customer tab selected
+    if (role === 'customer' && !hasCustomerProfile) {
+      await signOut(firebaseAuth)
+      let msg = "This account is not registered as a Customer. Please switch to the correct tab."
+      if (hasTechnicianProfile) {
+        msg = "This account is registered as a Technician. Please switch to the Technician tab."
+      } else if (hasAdminProfile) {
+        msg = "This account is registered as an Admin. Please switch to the Admin tab."
+      }
+      return { success: false, message: msg }
+    }
+
+    // Check Case 2: Technician tab selected
+    if (role === 'technician' && !hasTechnicianProfile) {
+      await signOut(firebaseAuth)
+      let msg = "This account is not registered as a Technician. Please switch to the correct tab."
+      if (hasCustomerProfile) {
+        msg = "This account is registered as a Customer. Please switch to the Customer tab."
+      } else if (hasAdminProfile) {
+        msg = "This account is registered as an Admin. Please switch to the Admin tab."
+      }
+      return { success: false, message: msg }
+    }
+
+    // Check Case 3: Admin tab selected
+    if (role === 'admin' && !hasAdminProfile) {
+      await signOut(firebaseAuth)
+      return { success: false, message: "This account is not registered as an Admin." }
+    }
+    const sessionUser = {
+      id: firebaseUser.uid,
+      uid: firebaseUser.uid,
+      name: profileData.name || '',
+      email: firebaseUser.email || '',
+      role: role, // Active role
+      activeRole: role, // Store activeRole
+      phone: profileData.phone || '',
+      address: profileData.address || '',
+      city: profileData.city || '',
+      state: profileData.state || '',
+      pincode: profileData.pincode || '',
+      bio: profileData.bio || '',
+      services: profileData.services || [],
+      availability: profileData.availability || 'Available',
+      createdAt: profileData.createdAt || ''
+    }
+    setCurrentUser(sessionUser)
+
+    return { success: true, user: sessionUser }
+  } catch (error) {
+    console.error("Login error details:", error)
+    let message = 'Invalid email or password.'
+    if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+      message = 'Invalid email or password.'
+    } else if (error.code === 'auth/too-many-requests') {
+      message = 'Account temporarily disabled due to too many failed attempts. Try again later.'
+    }
+    return { success: false, message }
+  }
+}
+
+export async function logout() {
+  try {
+    await signOut(firebaseAuth)
+    localStorage.removeItem(SESSION_KEY)
+  } catch (error) {
+    console.error("Logout error details:", error)
+    localStorage.removeItem(SESSION_KEY)
+  }
+}
+
+export async function updateProfile(profileData) {
+  try {
+    const currentUser = getCurrentUser()
+    if (!currentUser) return { success: false, message: 'No user is logged in.' }
+
+    const userDocRef = doc(db, 'users', currentUser.uid)
+    await updateDoc(userDocRef, profileData)
 
     const updatedUser = {
-      ...users[userIndex],
+      ...currentUser,
       ...profileData
     }
+    setCurrentUser(updatedUser)
 
-    users[userIndex] = updatedUser
-    saveUsers(users)
-
-    const { password: _, ...safeUser } = updatedUser
-    const userWithRole = { ...safeUser, role: 'customer' }
-    setCurrentUser(userWithRole)
-
-    return { success: true, user: userWithRole }
+    return { success: true, user: updatedUser }
+  } catch (error) {
+    console.error("Update profile error details:", error)
+    return { success: false, message: error.message || 'Error updating profile details.' }
   }
 }
+
+// Keep export variables so we don't break static import structures if any exist
+export const getUsers = () => []
+export const getTechnicians = () => []
+export const saveUsers = () => {}
+export const saveTechnicians = () => {}

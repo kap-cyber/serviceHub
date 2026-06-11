@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
@@ -16,10 +16,28 @@ import TechnicianDashboardPage from './pages/TechnicianDashboardPage'
 import TechnicianRequestsPage from './pages/TechnicianRequestsPage'
 import TechnicianJobsPage from './pages/TechnicianJobsPage'
 import TechnicianProfilePage from './pages/TechnicianProfilePage'
+import AdminDashboardPage from './pages/AdminDashboardPage'
+import AdminServicesPage from './pages/AdminServicesPage'
+import AdminCategoriesPage from './pages/AdminCategoriesPage'
+import AdminBookingsPage from './pages/AdminBookingsPage'
+import AdminCustomersPage from './pages/AdminCustomersPage'
+import AdminTechniciansPage from './pages/AdminTechniciansPage'
+import AdminSettingsPage from './pages/AdminSettingsPage'
 import NotFoundPage from './pages/NotFoundPage'
 import ProtectedRoute from './routes/ProtectedRoute'
+import { initAuthListener } from './firebase/authListener'
+import { seedDatabase } from './firebase/seeder'
 
 export default function App() {
+  useEffect(() => {
+    // Seed database if collections are empty
+    seedDatabase().catch(console.error)
+
+    // Initialize real-time authentication session synchronizer
+    const unsubscribe = initAuthListener()
+    return () => unsubscribe()
+  }, [])
+
   return (
     <div className="app-wrapper">
       <Navbar />
@@ -52,6 +70,29 @@ export default function App() {
           } />
           <Route path="/tech/profile" element={
             <ProtectedRoute allowedRole="technician"><TechnicianProfilePage /></ProtectedRoute>
+          } />
+
+          {/* Admin Only Routes */}
+          <Route path="/admin/dashboard" element={
+            <ProtectedRoute allowedRole="admin"><AdminDashboardPage /></ProtectedRoute>
+          } />
+          <Route path="/admin/services" element={
+            <ProtectedRoute allowedRole="admin"><AdminServicesPage /></ProtectedRoute>
+          } />
+          <Route path="/admin/categories" element={
+            <ProtectedRoute allowedRole="admin"><AdminCategoriesPage /></ProtectedRoute>
+          } />
+          <Route path="/admin/bookings" element={
+            <ProtectedRoute allowedRole="admin"><AdminBookingsPage /></ProtectedRoute>
+          } />
+          <Route path="/admin/customers" element={
+            <ProtectedRoute allowedRole="admin"><AdminCustomersPage /></ProtectedRoute>
+          } />
+          <Route path="/admin/technicians" element={
+            <ProtectedRoute allowedRole="admin"><AdminTechniciansPage /></ProtectedRoute>
+          } />
+          <Route path="/admin/settings" element={
+            <ProtectedRoute allowedRole="admin"><AdminSettingsPage /></ProtectedRoute>
           } />
 
           <Route path="/blog" element={<BlogPage />} />

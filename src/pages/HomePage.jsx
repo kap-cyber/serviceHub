@@ -1,16 +1,30 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { services, categories } from '../data/services'
+import { categories } from '../data/services'
 import { testimonials } from '../data/testimonials'
 import ServiceCard from '../components/ServiceCard'
 import TestimonialCard from '../components/TestimonialCard'
+import { fetchServices } from '../firebase/db'
 import './HomePage.css'
 
 export default function HomePage() {
   const [search, setSearch] = useState('')
   const navigate = useNavigate()
+  const [dbServices, setDbServices] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const popularServices = services.filter(s => s.popular)
+  useEffect(() => {
+    let active = true
+    fetchServices().then(data => {
+      if (active) {
+        setDbServices(data)
+        setLoading(false)
+      }
+    })
+    return () => { active = false }
+  }, [])
+
+  const popularServices = dbServices.filter(s => s.popular)
 
   function handleSearch(e) {
     e.preventDefault()
@@ -105,9 +119,15 @@ export default function HomePage() {
             <Link to="/services" className="btn-outline">View All Services</Link>
           </div>
           <div className="services-grid">
-            {popularServices.map(service => (
-              <ServiceCard key={service.id} service={service} />
-            ))}
+            {loading ? (
+              <div className="loader-wrapper" style={{ gridColumn: '1/-1', width: '100%' }}>
+                <div className="loader"></div>
+              </div>
+            ) : (
+              popularServices.map(service => (
+                <ServiceCard key={service.id} service={service} />
+              ))
+            )}
           </div>
         </div>
       </section>

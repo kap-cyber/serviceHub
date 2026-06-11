@@ -3,9 +3,9 @@ import { cancelBooking } from '../utils/bookings'
 import './BookingCard.css'
 
 export default function BookingCard({ booking, onUpdate }) {
-  function handleCancel() {
+  async function handleCancel() {
     if (window.confirm('Are you sure you want to cancel this booking?')) {
-      cancelBooking(booking.id)
+      await cancelBooking(booking.id)
       if (onUpdate) onUpdate()
     }
   }

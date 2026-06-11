@@ -1,15 +1,17 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { services } from '../data/services'
 import { getCurrentUser } from '../utils/auth'
 import { saveBooking } from '../utils/bookings'
+import { fetchServiceById } from '../firebase/db'
 import './BookingPage.css'
 
 export default function BookingPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const user = getCurrentUser()
-  const service = services.find(s => s.id === parseInt(id))
+  const [service, setService] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [submitLoading, setSubmitLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [errors, setErrors] = useState({})
 
@@ -23,15 +25,19 @@ export default function BookingPage() {
     notes: ''
   })
 
-  if (!service) {
-    return (
-      <div className="empty-state" style={{ padding: '120px 24px' }}>
-        <div className="empty-icon">😕</div>
-        <h3>Service Not Found</h3>
-        <Link to="/services" className="btn-primary" style={{ marginTop: 16 }}>Browse Services</Link>
-      </div>
-    )
-  }
+  useEffect(() => {
+    let active = true
+    fetchServiceById(id).then(data => {
+      if (active) {
+        setService(data)
+        setLoading(false)
+      }
+    }).catch(err => {
+      console.error(err)
+      if (active) setLoading(false)
+    })
+    return () => { active = false }
+  }, [id])
 
   function handleChange(e) {
     const { name, value } = e.target
@@ -49,7 +55,7 @@ export default function BookingPage() {
     return errs
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     const errs = validate()
     if (Object.keys(errs).length > 0) {
@@ -57,21 +63,46 @@ export default function BookingPage() {
       return
     }
 
-    saveBooking({
-      userId: user.id,
-      serviceId: service.id,
-      serviceName: service.name,
-      serviceImage: service.image,
-      price: service.price,
-      date: form.date,
-      time: form.time,
-      address: form.address,
-      phone: form.phone,
-      notes: form.notes
-    })
+    setSubmitLoading(true)
+    try {
+      await saveBooking({
+        userId: user.uid,
+        customerName: user.name || 'Customer',
+        serviceId: service.id,
+        serviceName: service.name,
+        serviceImage: service.image,
+        price: service.price,
+        date: form.date,
+        time: form.time,
+        address: form.address,
+        phone: form.phone,
+        notes: form.notes
+      })
+      setSuccess(true)
+      setTimeout(() => navigate('/bookings'), 2500)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setSubmitLoading(false)
+    }
+  }
 
-    setSuccess(true)
-    setTimeout(() => navigate('/bookings'), 2500)
+  if (loading) {
+    return (
+      <div className="loader-wrapper" style={{ minHeight: '60vh' }}>
+        <div className="loader"></div>
+      </div>
+    )
+  }
+
+  if (!service) {
+    return (
+      <div className="empty-state" style={{ padding: '120px 24px' }}>
+        <div className="empty-icon">😕</div>
+        <h3>Service Not Found</h3>
+        <Link to="/services" className="btn-primary" style={{ marginTop: 16 }}>Browse Services</Link>
+      </div>
+    )
   }
 
   if (success) {
