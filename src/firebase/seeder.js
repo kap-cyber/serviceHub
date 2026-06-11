@@ -18,6 +18,16 @@ export async function seedDatabase() {
         await setDoc(doc(db, 'services', String(service.id)), service)
       }
       console.log('Services seeded successfully!')
+    } else {
+      // Update AC Repair image if it holds the old broken 404 URL
+      const acDoc = servicesSnap.docs.find(d => d.id === '1')
+      if (acDoc) {
+        const acData = acDoc.data()
+        if (acData.image && acData.image.includes('1581094288338-2314dddb7ecc')) {
+          console.log('Updating AC Repair image URL in Firestore...')
+          await setDoc(doc(db, 'services', '1'), { image: 'https://images.unsplash.com/photo-1604754742629-3e5728249d73?w=600&q=80' }, { merge: true })
+        }
+      }
     }
 
     // Check if blogs collection is empty

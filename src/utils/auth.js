@@ -43,6 +43,8 @@ export async function signup(name, email, password, role = 'customer') {
       bio: '',
       services: [],
       availability: role === 'technician' ? 'Available' : '',
+      approvalStatus: role === 'technician' ? 'Pending' : '',
+      status: 'Active',
       createdAt: new Date().toISOString()
     }
     await setDoc(doc(db, 'users', firebaseUser.uid), profileData)
@@ -147,7 +149,9 @@ export async function login(email, password, role = 'customer') {
       bio: profileData.bio || '',
       services: profileData.services || [],
       availability: profileData.availability || 'Available',
-      createdAt: profileData.createdAt || ''
+      createdAt: profileData.createdAt || '',
+      approvalStatus: profileData.approvalStatus || '',
+      status: profileData.status || ''
     }
     setCurrentUser(sessionUser)
 

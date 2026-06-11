@@ -5,7 +5,7 @@ export const services = [
     category: 'Appliances',
     description: 'Expert AC repair, deep cleaning, gas refilling, and installation service by certified technicians.',
     longDescription: 'Our professional AC technicians provide comprehensive repair and maintenance services for all brands and models. From gas top-up to full deep cleaning, PCB repair to compressor replacement — we handle it all with precision and care.',
-    image: 'https://images.unsplash.com/photo-1581094288338-2314dddb7ecc?w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1604754742629-3e5728249d73?w=600&q=80',
     price: 499,
     rating: 4.8,
     reviewCount: 2340,

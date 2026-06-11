@@ -121,7 +121,7 @@ export default function TechnicianRequestsPage() {
               <div key={req.id} className="request-card">
                 <div className="request-image">
                   <img src={req.serviceImage} alt={req.serviceName} />
-                  <span className="category-tag">{getServiceCategory(req.serviceId)}</span>
+                  <span className="request-card-category">{getServiceCategory(req.serviceId)}</span>
                 </div>
                 <div className="request-info">
                   <div className="request-header">

@@ -38,7 +38,9 @@ export function initAuthListener() {
             bio: profileData.bio || '',
             services: profileData.services || [],
             availability: profileData.availability || 'Available',
-            createdAt: profileData.createdAt || ''
+            createdAt: profileData.createdAt || '',
+            approvalStatus: profileData.approvalStatus || '',
+            status: profileData.status || ''
           }
           setCurrentUser(sessionUser)
           
